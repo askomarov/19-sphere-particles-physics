@@ -4,7 +4,7 @@ Lesson 19 from the [WebGPU & TSL](https://threejs-journey.com/) course by [Bruno
 
 **Live demo:** [askomarov.github.io/19-sphere-particles-physics](https://askomarov.github.io/19-sphere-particles-physics/)
 
-![Interactive Spheres hero](./static/og.png)
+![Interactive Spheres hero](./static/og.jpg)
 
 ## Setup
 
