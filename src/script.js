@@ -19,11 +19,21 @@ import {
   vec3,
 } from "three/tsl";
 import { Fn } from "three/tsl";
+import Lenis from "lenis";
+import "lenis/dist/lenis.css";
 
 /**
  * Base
  */
 const isLanding = document.body.dataset.page === "landing";
+
+let lenis = null;
+if (isLanding) {
+  lenis = new Lenis({
+    anchors: true,
+    autoRaf: false,
+  });
+}
 
 // Canvas
 const canvas = document.querySelector("canvas.threejs");
@@ -159,10 +169,15 @@ document.addEventListener("pointermove", (event) => {
 
 if (isLanding) {
   const syncHeroVisibility = () => {
-    heroVisible = window.scrollY < sizes.height * 0.85;
+    const scrollY = lenis ? lenis.scroll : window.scrollY;
+    heroVisible = scrollY < sizes.height * 0.85;
   };
   syncHeroVisibility();
-  window.addEventListener("scroll", syncHeroVisibility, { passive: true });
+  if (lenis) {
+    lenis.on("scroll", syncHeroVisibility);
+  } else {
+    window.addEventListener("scroll", syncHeroVisibility, { passive: true });
+  }
 }
 
 const returnHome = uniform(0);
@@ -413,6 +428,10 @@ const cameraLookAt = new THREE.Vector3(0, 0, 0);
 
 const tick = (timestamp) => {
   timer.update(timestamp);
+
+  if (lenis) {
+    lenis.raf(timestamp);
+  }
 
   if (controls) {
     controls.update();
