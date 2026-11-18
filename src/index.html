@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Spheres</title>
+    <meta
+      name="description"
+      content="Real-time sphere particle physics with WebGPU and Three.js TSL."
+    />
+    <meta property="og:title" content="Interactive Spheres" />
+    <meta
+      property="og:description"
+      content="Real-time sphere particle physics with WebGPU and Three.js TSL."
+    />
+    <meta
+      property="og:url"
+      content="https://askomarov.github.io/19-sphere-particles-physics/"
+    />
+    <meta
+      property="og:image"
+      content="https://askomarov.github.io/19-sphere-particles-physics/og.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:image"
+      content="https://askomarov.github.io/19-sphere-particles-physics/og.png"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./landing.css" />
+  </head>
+
+  <body data-page="landing">
+    <canvas class="threejs"></canvas>
+
+    <main class="page">
+      <section class="hero" id="hero">
+        <div class="hero__copy">
+          <p class="hero__eyebrow">19 / SPHERE PHYSICS</p>
+          <h1 class="hero__title">
+            Interactive<br />
+            Spheres
+          </h1>
+          <p class="hero__lede">
+            Real-time particle physics you can push around with the cursor.
+          </p>
+          <div class="hero__actions">
+            <a class="hero__cta" href="#features">Explore now</a>
+            <a class="hero__lab" href="./lesson.html">Open lab</a>
+          </div>
+        </div>
+
+        <a class="hero__scroll" href="#features" aria-label="Scroll to features">
+          <span></span>
+        </a>
+      </section>
+
+      <section class="features" id="features">
+        <div class="features__sticky">
+          <p class="features__eyebrow">What you get</p>
+          <h2 class="features__title">Features</h2>
+          <p class="features__lede">
+            Built as a demo of WebGPU compute particles — not a deck of cards.
+          </p>
+        </div>
+
+        <ul class="features__list">
+          <li class="feature">
+            <span class="feature__orb feature__orb--a" aria-hidden="true"></span>
+            <div class="feature__meta">
+              <span class="feature__index">01</span>
+              <h3 class="feature__name">Dynamic</h3>
+            </div>
+            <p class="feature__text">
+              Thousands of spheres collide, heat up, and react as one living
+              mass.
+            </p>
+          </li>
+          <li class="feature">
+            <span class="feature__orb feature__orb--b" aria-hidden="true"></span>
+            <div class="feature__meta">
+              <span class="feature__index">02</span>
+              <h3 class="feature__name">Responsive</h3>
+            </div>
+            <p class="feature__text">
+              Drag the pointer across the hero and the cloud answers
+              immediately.
+            </p>
+          </li>
+          <li class="feature">
+            <span class="feature__orb feature__orb--c" aria-hidden="true"></span>
+            <div class="feature__meta">
+              <span class="feature__index">03</span>
+              <h3 class="feature__name">Physics</h3>
+            </div>
+            <p class="feature__text">
+              Gravity wells, damping, and impact heat — all on the GPU via TSL.
+            </p>
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <a class="course-link" href="https://threejs-journey.com/" target="_blank" rel="noopener noreferrer"
+      title="Three.js Journey by Bruno Simon">
+      <img src="./icon.svg" alt="Three.js Journey" width="28" height="32">
+      <span>Three.js Journey</span>
+    </a>
+
+    <script type="module" src="./script.js"></script>
+  </body>
+
+</html>
