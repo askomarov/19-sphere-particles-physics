@@ -110,7 +110,7 @@ const scenePass = pass(scene, camera);
 const scenePassColor = scenePass.getTextureNode("output");
 const bloomPass = bloom(scenePassColor);
 bloomPass.threshold.value = 0;
-bloomPass.strength.value = 0.15;
+bloomPass.strength.value = 0.25;
 
 renderPipeline.outputNode = scenePassColor.add(bloomPass);
 
