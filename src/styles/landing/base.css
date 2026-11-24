@@ -1,0 +1,56 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #141218;
+  --bg-deep: #0c0b10;
+  --ink: #f4f1f8;
+  --muted: rgba(244, 241, 248, 0.62);
+  --line: rgba(244, 241, 248, 0.14);
+  --blue: #4f7cff;
+  --blue-deep: #2a4fd4;
+  --glow: rgba(79, 124, 255, 0.55);
+  --font-display: "Syne", "Avenir Next", "Segoe UI", sans-serif;
+  --page-pad-x: 1.5rem;
+  --page-pad-y: 1.5rem;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--bg-deep);
+  color: var(--ink);
+  font-family: var(--font-display);
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.threejs {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100lvh !important;
+  outline: none;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 521px) {
+  :root {
+    --page-pad-x: clamp(1.5rem, 4vw, 3.5rem);
+    --page-pad-y: clamp(1.5rem, 4vw, 3.5rem);
+  }
+}

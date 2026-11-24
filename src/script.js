@@ -5,9 +5,11 @@ import { bloom } from "three/examples/jsm/tsl/display/BloomNode.js";
 import {
   bufferAttribute,
   color,
+  cos,
   deltaTime,
   dot,
   EPSILON,
+  float,
   hash,
   If,
   instancedArray,
@@ -15,6 +17,7 @@ import {
   Loop,
   pass,
   positionLocal,
+  sin,
   uniform,
   vec3,
 } from "three/tsl";
@@ -159,47 +162,97 @@ if (!isLanding) {
  */
 const raycaster = new THREE.Raycaster();
 const cursor = new THREE.Vector2();
-let heroVisible = true;
+
+const returnHome = uniform(0);
+const formCircle = uniform(0);
+const homeStrength = uniform(0.06);
+const homeSettle = uniform(0.12);
+const homeDamping = uniform(3.5);
+
+// Particle color palettes — change these hex values to restyle sections
+const PARTICLE_PALETTE = {
+  default: {
+    base: 0xffffff,
+    emissive: 0x335cff,
+  },
+  stack: {
+    base: 0x000000,
+    emissive: 0xff5a1f,
+  },
+};
+
+const particleBaseColor = uniform(color(PARTICLE_PALETTE.default.base));
+const emissiveColor = uniform(color(PARTICLE_PALETTE.default.emissive));
+const particlePaletteTarget = {
+  base: new THREE.Color(PARTICLE_PALETTE.default.base),
+  emissive: new THREE.Color(PARTICLE_PALETTE.default.emissive),
+};
+// Higher = faster blend. ~4 ≈ ~0.5s to settle.
+const PARTICLE_PALETTE_BLEND = 4;
+
+const applyParticlePalette = (palette) => {
+  particlePaletteTarget.base.setHex(palette.base);
+  particlePaletteTarget.emissive.setHex(palette.emissive);
+};
+
+/** @type {"hero" | "features" | "stack"} */
+let sectionMode = "hero";
 
 document.addEventListener("pointermove", (event) => {
-  if (isLanding && !heroVisible) return;
+  if (isLanding && sectionMode === "features") return;
   cursor.x = (event.clientX / sizes.width) * 2 - 1;
   cursor.y = -(event.clientY / sizes.height) * 2 + 1;
 });
 
 if (isLanding) {
-  const syncHeroVisibility = () => {
-    const scrollY = lenis ? lenis.scroll : window.scrollY;
-    heroVisible = scrollY < sizes.height * 0.85;
-  };
-  syncHeroVisibility();
-  if (lenis) {
-    lenis.on("scroll", syncHeroVisibility);
-  } else {
-    window.addEventListener("scroll", syncHeroVisibility, { passive: true });
-  }
-}
+  const sectionIds = ["hero", "features", "stack"];
+  const ratios = Object.fromEntries(sectionIds.map((id) => [id, 0]));
+  let activeSection = "hero";
 
-const returnHome = uniform(0);
-const homeStrength = uniform(0.06);
-const homeSettle = uniform(0.12);
-const homeDamping = uniform(3.5);
-
-if (isLanding) {
-  const featuresSection = document.querySelector("#features");
-  if (featuresSection) {
-    let homeActive = false;
-    const featuresObserver = new IntersectionObserver(
-      ([entry]) => {
-        const ratio = entry.intersectionRatio;
-        if (!homeActive && ratio >= 0.51) homeActive = true;
-        else if (homeActive && ratio < 0.35) homeActive = false;
-        returnHome.value = homeActive ? 1 : 0;
-      },
-      { threshold: [0, 0.35, 0.51, 1] },
+  const applySectionMode = () => {
+    sectionMode = activeSection;
+    returnHome.value = activeSection === "features" ? 1 : 0;
+    formCircle.value = activeSection === "stack" ? 1 : 0;
+    applyParticlePalette(
+      activeSection === "stack"
+        ? PARTICLE_PALETTE.stack
+        : PARTICLE_PALETTE.default,
     );
-    featuresObserver.observe(featuresSection);
+  };
+
+  const sectionObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        ratios[entry.target.id] = entry.intersectionRatio;
+      }
+
+      const ranked = sectionIds
+        .map((id) => ({ id, ratio: ratios[id] ?? 0 }))
+        .sort((a, b) => b.ratio - a.ratio);
+      const leader = ranked[0];
+
+      if (leader.id !== activeSection) {
+        if (leader.ratio >= 0.51) {
+          activeSection = leader.id;
+          applySectionMode();
+        }
+      } else if (leader.ratio < 0.35) {
+        const next = ranked.find((item) => item.ratio >= 0.51);
+        if (next) {
+          activeSection = next.id;
+          applySectionMode();
+        }
+      }
+    },
+    { threshold: [0, 0.35, 0.51, 1] },
+  );
+
+  for (const id of sectionIds) {
+    const el = document.querySelector(`#${id}`);
+    if (el) sectionObserver.observe(el);
   }
+
+  applySectionMode();
 }
 
 // cursor helper
@@ -218,6 +271,7 @@ const positionsBuffer = instancedArray(count, "vec3");
 const velocitiesBuffer = instancedArray(count, "vec3");
 const heatBuffer = instancedArray(count, "float");
 const initialPositionsBuffer = instancedArray(count, "vec3");
+const circlePositionsBuffer = instancedArray(count, "vec3");
 
 // uniforms
 const radius = uniform(0.25);
@@ -226,7 +280,6 @@ const impactDamping = uniform(0.05);
 const generalDamping = uniform(0.4);
 const heatDamping = uniform(3);
 const heatImpactStrength = uniform(3);
-const emissiveColor = uniform(color(0x335cff));
 const cursorPosition = uniform(vec3());
 const cursorVelocity = uniform(vec3());
 const cursorRadius = uniform(2.75);
@@ -240,9 +293,8 @@ const attractorSoftening = uniform(1.5);
 const geometry = new THREE.IcosahedronGeometry(1, 2);
 
 // material
-const material = new THREE.MeshLambertNodeMaterial({
-  color: 0xffffff,
-});
+const material = new THREE.MeshLambertNodeMaterial();
+material.colorNode = particleBaseColor;
 
 // Position
 material.positionNode = Fn(() => {
@@ -258,6 +310,7 @@ material.positionNode = Fn(() => {
 const initCompute = Fn(() => {
   const position = positionsBuffer.element(instanceIndex);
   const initialPosition = initialPositionsBuffer.element(instanceIndex);
+  const circlePosition = circlePositionsBuffer.element(instanceIndex);
 
   // XZ rectangle at the top of the scene (start / home plane)
   const start = vec3(
@@ -267,6 +320,14 @@ const initCompute = Fn(() => {
   );
   position.assign(start);
   initialPosition.assign(start);
+
+  // Golden-angle ring, tilted 45° around X
+  const angle = instanceIndex.toFloat().mul(2.399963);
+  const circleRadius = float(6);
+  const x = sin(angle).mul(circleRadius);
+  const z = cos(angle).mul(circleRadius);
+  const tilt = float(Math.PI / 2); // 45°
+  circlePosition.assign(vec3(x, z.negate().mul(sin(tilt)), z.mul(cos(tilt))));
 })().compute(count);
 
 renderer.compute(initCompute);
@@ -291,7 +352,7 @@ const updateCompute = Fn(() => {
   aVelocity.addAssign(_cursorVelocity);
   aHeat.addAssign(_cursorVelocity.length().mul(50));
 
-  const liveWeight = returnHome.oneMinus();
+  const liveWeight = returnHome.oneMinus().mul(formCircle.oneMinus());
 
   //Center gravity
   const toCenter = aPosition.negate().normalize();
@@ -326,6 +387,18 @@ const updateCompute = Fn(() => {
   );
   aVelocity.addAssign(
     toHome.mul(homeSettle).mul(clampedDeltaTime).mul(returnHome),
+  );
+
+  // Pull into a ring when stack section is in view
+  const circlePosition = circlePositionsBuffer.element(instanceIndex);
+  const toCircle = circlePosition.sub(aPosition);
+  const circleDistance = toCircle.length().max(EPSILON);
+  const circleDir = toCircle.div(circleDistance);
+  aVelocity.addAssign(
+    circleDir.mul(homeStrength).mul(clampedDeltaTime).mul(formCircle),
+  );
+  aVelocity.addAssign(
+    toCircle.mul(homeSettle).mul(clampedDeltaTime).mul(formCircle),
   );
 
   // Sphere collisions
@@ -433,9 +506,13 @@ const tick = (timestamp) => {
     lenis.raf(timestamp);
   }
 
+  const paletteBlend = 1 - Math.exp(-PARTICLE_PALETTE_BLEND * timer.getDelta());
+  particleBaseColor.value.lerp(particlePaletteTarget.base, paletteBlend);
+  emissiveColor.value.lerp(particlePaletteTarget.emissive, paletteBlend);
+
   if (controls) {
     controls.update();
-  } else if (isLanding) {
+  } else if (isLanding && sectionMode !== "stack") {
     const elapsed = timer.getElapsed();
     const angle = elapsed * 0.12;
     const lift = Math.sin(elapsed * 0.35) * 1.4;
@@ -445,10 +522,13 @@ const tick = (timestamp) => {
       Math.cos(angle) * cameraOrbitRadius,
     );
     camera.lookAt(cameraLookAt);
+  } else if (isLanding && sectionMode === "stack") {
+    camera.position.set(0, 1.5, cameraOrbitRadius);
+    camera.lookAt(cameraLookAt);
   }
 
-  // Cursor + raycaster
-  if (!isLanding || heroVisible) {
+  // Cursor + raycaster (hero + stack; muted on features)
+  if (!isLanding || sectionMode !== "features") {
     raycaster.setFromCamera(cursor, camera);
     const planeNormal = camera.position.clone().normalize();
     const plane = new THREE.Plane(planeNormal, 0);
